@@ -1,0 +1,6 @@
+board:
+  name: nuedc_chassis_slave
+  full_name: Nuedc Chassis Slave
+  vendor: st
+  socs:
+    - name: stm32f723xx

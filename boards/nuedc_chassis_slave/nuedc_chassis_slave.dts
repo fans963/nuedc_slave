@@ -1,0 +1,277 @@
+/*
+ * Copyright (c) 2018 Aurelien Jarno
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f7/stm32f723Xe.dtsi>
+#include <st/f7/stm32f723i(c-e)kx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/led/led.h>
+
+/ {
+	model = "NUEDC CHASSIS SLAVE BOARD";
+	compatible = "nuedc,chassis-slave";
+
+	chosen {
+		zephyr,console = &usart3;
+		zephyr,shell-uart = &usart3;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,led-strip = &ws2812;
+	};
+
+	// leds {
+
+	// WS2812 LED strip - see &spi3 node below
+
+	// leds {
+	// 	compatible = "gpio-leds";
+
+	// 	blue_led: led_1 {
+	// 		gpios = <&gpioa 5 GPIO_ACTIVE_HIGH>;
+	// 		label = "User LD1";
+	// 	};
+
+	// 	red_led: led_2 {
+	// 		gpios = <&gpioa 7 GPIO_ACTIVE_HIGH>;
+	// 		label = "User LD5";
+	// 	};
+
+	// 	green_led: led_3 {
+	// 		gpios = <&gpiob 1 GPIO_ACTIVE_HIGH>;
+	// 		label = "User LD6";
+	// 	};
+	// };
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		user_button: button {
+			label = "User";
+			gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		sw0 = &user_button;
+		zephyr-usbbus = &usbotg_hs;
+		zephyr-spi1 = &spi1;
+		zephyr-spi2 = &spi2;
+		zephyr-i2c1 = &i2c1;
+		zephyr-i2c2 = &i2c2;
+		zephyr-uart1 = &usart1;
+		zephyr-uart2 = &usart2;
+		zephyr-can1 = &can1;
+		zephyr-adc1 = &adc1;
+		zephyr-adc2 = &adc2;
+		zephyr-imu0-accel = &bmi088_accel;
+		zephyr-imu0-gyro = &bmi088_gyro;
+		zephyr-pwm-motor = &timers1_pwm;
+	};
+};
+
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(25)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <25>;
+	mul-n = <432>;
+	div-p = <2>;
+	div-q = <9>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(216)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	dmas = <&dma2 7 4 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>,
+	       <&dma2 5 4 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	status = "okay";
+};
+
+&usart2 {
+	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+	pinctrl-names = "default";
+	dmas = <&dma1 6 1 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>,
+	       <&dma1 5 1 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	status = "okay";
+};
+
+&i2c2 {
+	pinctrl-0 = <&i2c2_scl_pb10 &i2c2_sda_pb11>;
+	pinctrl-names = "default";
+	dmas = <&dma1 7 7 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>,
+	       <&dma1 2 7 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	status = "okay";
+};
+
+&dma2 {
+	status = "okay";
+};
+
+&dma1 {
+	status = "okay";
+};
+
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW    /* TODO: accel CS */
+		    &gpioa 3 GPIO_ACTIVE_LOW>;   /* TODO: gyro CS */
+	dmas = <&dma2 3 3 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>,
+	       <&dma2 0 3 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	status = "okay";
+
+	/* BMI088 加速度计 — 改 spi-max-frequency / reg / int-gpios */
+	bmi088_accel: bmi088-accel@0 {
+		compatible = "bosch,bmi08x-accel";
+		reg = <0>;                          /* CS0 (spi-cs-gpios 第 0 个) */
+		spi-max-frequency = <DT_FREQ_M(10)>;
+		accel-fs = <16>;                    /* 满量程: 2/3/4/6/8/12/16/24 g */
+		accel-hz = "1600";                   /* 采样率: 12.5~1600 Hz */
+		int-gpios = <&gpioa 1 GPIO_ACTIVE_HIGH>;  /* TODO: 改成你实际的 INT 引脚 */
+	};
+
+	/* BMI088 陀螺仪 — 共用 SPI 总线，独立 CS */
+	bmi088_gyro: bmi088-gyro@1 {
+		compatible = "bosch,bmi08x-gyro";
+		reg = <1>;                          /* CS1 (spi-cs-gpios 第 1 个) */
+		spi-max-frequency = <DT_FREQ_M(10)>;
+		gyro-fs = <2000>;                   /* 满量程: 125/250/500/1000/2000 dps */
+		gyro-hz = "2000_532";               /* 采样率+带宽 */
+		int-gpios = <&gpioa 2 GPIO_ACTIVE_HIGH>;  /* TODO: 改成你实际的 INT 引脚 */
+	};
+};
+
+&spi2 {
+	pinctrl-0 = <&spi2_sck_pd3 &spi2_miso_pc2 &spi2_mosi_pc1>;
+	pinctrl-names = "default";
+	dmas = <&dma1 4 0 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>,
+	       <&dma1 3 0 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx", "rx";
+	status = "okay";
+};
+
+&usbphyc {
+	status = "okay";
+};
+
+&usbotg_hs {
+	pinctrl-0 = <&usb_otg_hs_dm_pb14 &usb_otg_hs_dp_pb15>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&can1 {
+	pinctrl-0 = <&can1_rx_pa11 &can1_tx_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&adc1 {
+	pinctrl-0 = <&adc1_in0_pa0 &adc1_in1_pa1 &adc1_in2_pa2 &adc1_in3_pa3>;
+	pinctrl-names = "default";
+	st,adc-prescaler = <2>;
+	dmas = <&dma2 4 0 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "rx";
+	status = "okay";
+};
+
+&adc2 {
+	pinctrl-0 = <&adc2_in4_pa4 &adc2_in5_pa5 &adc2_in6_pa6 &adc2_in7_pa7>;
+	pinctrl-names = "default";
+	st,adc-prescaler = <2>;
+	dmas = <&dma2 2 1 STM32_DMA_PERIPH_RX STM32_DMA_FIFO_FULL>;
+	dma-names = "rx";
+	status = "okay";
+};
+
+&timers3 {
+	status = "okay";
+
+	qdec0: qdec {
+		pinctrl-0 = <&tim3_ch1_pc6 &tim3_ch2_pc7>;
+		pinctrl-names = "default";
+		st,counts-per-revolution = <65535>;
+		st,encoder-mode = <0x3>;
+		status = "okay";
+	};
+};
+
+&timers4 {
+	status = "okay";
+
+	qdec1: qdec {
+		pinctrl-0 = <&tim4_ch1_pd12 &tim4_ch2_pd13>;
+		pinctrl-names = "default";
+		st,counts-per-revolution = <65535>;
+		st,encoder-mode = <0x3>;
+		status = "okay";
+	};
+};
+
+/* SPI3 dedicated to WS2812 LED strip (MOSI only, SCK not connected to LED) */
+&spi3 {
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_mosi_pb2>;  /* TODO: 改引脚 */
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;  /* TODO: 任意空闲引脚，WS2812 不用 CS */
+	dmas = <&dma1 5 0 STM32_DMA_PERIPH_TX STM32_DMA_FIFO_FULL>;
+	dma-names = "tx";
+	status = "okay";
+
+	ws2812: ws2812@0 {
+		reg = <0>;
+		compatible = "worldsemi,ws2812-spi";
+		chain-length = <1>;
+		color-mapping = <LED_COLOR_ID_GREEN
+				 LED_COLOR_ID_RED
+				 LED_COLOR_ID_BLUE>;
+		spi-max-frequency = <DT_FREQ_M(4)>;
+		reset-delay = <50>;
+		spi-one-frame = <0x6>;     /* 110b = WS2812 '1' at 4MHz */
+		spi-zero-frame = <0x4>;    /* 100b = WS2812 '0' at 4MHz */
+		bits-per-symbol = <3>;     /* 3 SPI bits per WS2812 bit */
+	};
+};
+
+/* IWDG — 100ms timeout, configured via Kconfig */
+&iwdg {
+	status = "okay";
+};
+
+/* TIM1 PWM — CH1 (PE9) + CH2 (PE11) for motor control */
+&timers1 {
+	status = "okay";
+
+	timers1_pwm: pwm {
+		pinctrl-0 = <&tim1_ch1_pe9 &tim1_ch2_pe11>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};

@@ -1,0 +1,22 @@
+identifier: nuedc_chassis_slave
+name: BOARD_NUEDC_CHASSIS_SLAVE
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+ram: 192
+flash: 512
+supported:
+  - gpio
+  - i2c
+  - spi
+  - adc
+  - can
+  - pwm
+  - watchdog
+  - sensor
+  - led_strip
+  - usb_device
+  - usbd
+vendor: st
