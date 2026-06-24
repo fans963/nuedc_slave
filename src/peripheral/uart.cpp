@@ -1,10 +1,10 @@
 #include "peripheral/uart.hpp"
 
-Uart::Uart(const struct device *dev, uint8_t idx)
-    : dev_(dev), idx_(idx) {}
+Uart::Uart(const struct device* dev, uint8_t idx)
+    : dev_(dev)
+    , idx_(idx) { }
 
-int Uart::init()
-{
+int Uart::init() {
     if (!device_is_ready(dev_)) {
         return -ENODEV;
     }
@@ -17,9 +17,8 @@ int Uart::init()
     return uart_rx_enable(dev_, rx_staging_, RX_STAGING_SIZE, 1000 /* 1ms timeout */);
 }
 
-void Uart::uart_callback(const struct device *dev, struct uart_event *evt, void *user_data)
-{
-    auto *self = static_cast<Uart *>(user_data);
+void Uart::uart_callback(const struct device* dev, struct uart_event* evt, void* user_data) {
+    auto* self = static_cast<Uart*>(user_data);
 
     switch (evt->type) {
     case UART_RX_RDY:
@@ -41,24 +40,24 @@ void Uart::uart_callback(const struct device *dev, struct uart_event *evt, void 
     }
 }
 
-void Uart::on_rx(const uint8_t *data, size_t len)
-{
+void Uart::on_rx(const uint8_t* data, size_t len) {
     // Encode received bytes into uplink FlatBuffer
     msg::encode_uart_rx(uplink_writer_, idx_, data, len);
 }
 
-bool Uart::try_transmit()
-{
+bool Uart::try_transmit() {
     if (atomic_get(&tx_busy_)) return false;
     if (downlink_buf_.empty()) return false;
 
     // Drain downlink buffer into tx buffer
     size_t total = 0;
-    downlink_buf_.drain([this, &total](std::span<const uint8_t> chunk) {
-        size_t n = std::min(chunk.size(), TX_BUF_SIZE - total);
-        std::memcpy(tx_buf_ + total, chunk.data(), n);
-        total += n;
-    }, TX_BUF_SIZE);
+    downlink_buf_.drain(
+        [this, &total](std::span<const uint8_t> chunk) {
+            size_t n = std::min(chunk.size(), TX_BUF_SIZE - total);
+            std::memcpy(tx_buf_ + total, chunk.data(), n);
+            total += n;
+        },
+        TX_BUF_SIZE);
 
     if (total == 0) return false;
 

@@ -1,0 +1,6 @@
+# Copyright (c) 2020 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_COMMUNICATION_TEST
+	bool "Communication Test Board"
+	select SOC_STM32F407XE

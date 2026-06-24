@@ -1,29 +1,29 @@
 #pragma once
 
-#include <zephyr/kernel.h>
-#include <zephyr/drivers/sensor.h>
 #include "protocol/ring_buffer_writer.hpp"
-#include "protocol/message_handler.hpp"
-#include <cstdint>
+#include <zephyr/drivers/sensor.h>
 
-/// BMI088 via Zephyr sensor API (DT-driven).
+/// BMI088 via Zephyr sensor API — interrupt-driven (data-ready trigger).
 class IMU {
 public:
-    IMU(const struct device *accel_dev, const struct device *gyro_dev);
+    IMU(const struct device* accel_dev, const struct device* gyro_dev);
 
     int init();
 
-    /// Call from main loop: fetch + encode IMU data.
-    void poll();
-
-    protocol::RingBufferWriter<512> &uplink_writer() { return uplink_writer_; }
+    protocol::RingBufferWriter<512>& uplink_writer() { return uplink_writer_; }
 
 private:
-    const struct device *accel_dev_;
-    const struct device *gyro_dev_;
+    static void accel_trigger_handler(const struct device* dev, const struct sensor_trigger* trig);
+
+    void on_data_ready();
+
+    const struct device* accel_dev_;
+    const struct device* gyro_dev_;
 
     protocol::RingBufferWriter<512> uplink_writer_;
 
-    int64_t last_poll_ms_ = 0;
-    static constexpr int64_t POLL_INTERVAL_MS = 5;
+    struct sensor_trigger accel_trig_;
+
+    // 全局实例指针（用于静态回调）
+    static IMU* instance_;
 };

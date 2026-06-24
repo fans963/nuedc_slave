@@ -1,11 +1,11 @@
 #include "peripheral/can.hpp"
 #include <cstring>
 
-Can::Can(const struct device *dev, uint8_t idx)
-    : dev_(dev), idx_(idx) {}
+Can::Can(const struct device* dev, uint8_t idx)
+    : dev_(dev)
+    , idx_(idx) { }
 
-int Can::init()
-{
+int Can::init() {
     if (!device_is_ready(dev_)) {
         return -ENODEV;
     }
@@ -16,8 +16,8 @@ int Can::init()
 
     // Add RX filter: accept all frames
     struct can_filter filter = {
-        .id = 0,
-        .mask = 0,
+        .id    = 0,
+        .mask  = 0,
         .flags = 0,
     };
     can_add_rx_filter(dev_, rx_callback, this, &filter);
@@ -29,34 +29,24 @@ int Can::init()
     return 0;
 }
 
-void Can::rx_callback(const struct device *dev, struct can_frame *frame, void *user_data)
-{
-    auto *self = static_cast<Can *>(user_data);
+void Can::rx_callback(const struct device* dev, struct can_frame* frame, void* user_data) {
+    auto* self = static_cast<Can*>(user_data);
 
     bool is_extended = (frame->flags & CAN_FRAME_IDE) != 0;
-    bool is_rtr = (frame->flags & CAN_FRAME_RTR) != 0;
-    uint32_t can_id = frame->id;
+    bool is_rtr      = (frame->flags & CAN_FRAME_RTR) != 0;
+    uint32_t can_id  = frame->id;
     uint8_t data_len = can_dlc_to_bytes(frame->dlc);
 
-    msg::encode_can_rx(
-        self->uplink_writer_,
-        self->idx_,
-        can_id,
-        data_len,
-        is_extended,
-        is_rtr,
-        frame->data,
-        data_len);
+    msg::encode_can_rx(self->uplink_writer_, self->idx_, can_id, data_len, is_extended, is_rtr,
+        frame->data, data_len);
 }
 
-void Can::tx_callback(const struct device *dev, int error, void *user_data)
-{
-    auto *self = static_cast<Can *>(user_data);
+void Can::tx_callback(const struct device* dev, int error, void* user_data) {
+    auto* self = static_cast<Can*>(user_data);
     atomic_set(&self->tx_busy_, 0);
 }
 
-bool Can::try_transmit()
-{
+bool Can::try_transmit() {
     if (atomic_get(&tx_busy_)) return false;
     if (downlink_buf_.size() < sizeof(msg::CanTxData)) return false;
 
@@ -67,10 +57,10 @@ bool Can::try_transmit()
         return false;
     }
 
-    const auto *tx = reinterpret_cast<const msg::CanTxData *>(chunk.data());
+    const auto* tx = reinterpret_cast<const msg::CanTxData*>(chunk.data());
 
-    struct can_frame frame{};
-    frame.id = tx->can_id & 0x1FFFFFFF;
+    struct can_frame frame { };
+    frame.id    = tx->can_id & 0x1FFFFFFF;
     frame.flags = 0;
     if (tx->is_extended) {
         frame.flags |= CAN_FRAME_IDE;

@@ -1,0 +1,6 @@
+board:
+  name: communication_test
+  full_name: communication test board 
+  vendor: others
+  socs:
+    - name: stm32f407xx

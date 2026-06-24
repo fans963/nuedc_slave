@@ -39,20 +39,19 @@ target_include_directories(app PRIVATE
     ${GENERATED_DIR}
 )
 
-# fmt header-only mode — 只编译用到的函数
+# fmt header-only + 嵌入式体积优化
 target_compile_definitions(app PRIVATE
-    FMT_HEADER_ONLY
-    FMT_OPTIMIZE_SIZE=2
-    FMT_USE_FULL_CACHE_DRAGONBOX=0
+    FMT_HEADER_ONLY=1
+    FMT_EXCEPTIONS=0
+    FMT_USE_LONG_DOUBLE=0
+    FMT_USE_INT128=0
+    FMT_USE_WCHAR=0           # 嵌入式 libc++ 无 std::wstring
+    FMT_OPTIMIZE_SIZE=2       # 禁用 locale + 体积优化
 )
 
-# Additional aggressive compiler flags
+# Additional compiler flags
 target_compile_options(app PRIVATE
-    -fomit-frame-pointer
-    -ffast-math
-    -fno-math-errno
-    -fno-trapping-math
-    -funroll-loops
-    -falign-functions=4
-    -falign-loops=4
+    -fno-math-errno               # 省掉数学函数 errno 检查
+    -Wno-deprecated-declarations  # emio uses aligned_storage_t (deprecated in C++23)
+    -Wno-c23-extensions           # Zephyr USB driver label-before-declaration
 )

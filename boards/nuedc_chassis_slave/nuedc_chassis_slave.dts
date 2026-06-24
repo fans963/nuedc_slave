@@ -58,6 +58,7 @@
 	aliases {
 		sw0 = &user_button;
 		zephyr-usbbus = &usbotg_hs;
+		zephyr-watchdog = &iwdg;
 		zephyr-spi1 = &spi1;
 		zephyr-spi2 = &spi2;
 		zephyr-i2c1 = &i2c1;
@@ -70,6 +71,8 @@
 		zephyr-imu0-accel = &bmi088_accel;
 		zephyr-imu0-gyro = &bmi088_gyro;
 		zephyr-pwm-motor = &timers1_pwm;
+		zephyr-qdec0 = &qdec0;
+		zephyr-qdec1 = &qdec1;
 	};
 };
 
@@ -182,7 +185,7 @@
 	status = "okay";
 };
 
-&usbotg_hs {
+zephyr_udc0: &usbotg_hs {
 	pinctrl-0 = <&usb_otg_hs_dm_pb14 &usb_otg_hs_dp_pb15>;
 	pinctrl-names = "default";
 	status = "okay";

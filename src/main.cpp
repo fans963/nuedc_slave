@@ -1,7 +1,6 @@
 #include "util/log.hpp"
 #include <zephyr/device.h>
 #include <zephyr/kernel.h>
-#include <zephyr/drivers/watchdog.h>
 
 #include "peripheral/adc.hpp"
 #include "peripheral/can.hpp"
@@ -14,7 +13,7 @@
 #include "peripheral/uart.hpp"
 #include "usb/bulk_device.hpp"
 
-static constexpr auto LOG = util::log::Logger{"main"};
+static constexpr auto LOG = util::log::Logger { "main" };
 
 // ── Peripheral instances (all via DT aliases) ──────────────────────────
 
@@ -26,8 +25,8 @@ static Uart uart1(DEVICE_DT_GET(DT_ALIAS(zephyr_uart2)), 1);
 static Can can0(DEVICE_DT_GET(DT_ALIAS(zephyr_can1)), 0);
 
 // IMU (BMI088 accel + gyro)
-static IMU imu0(DEVICE_DT_GET(DT_ALIAS(zephyr_imu0_accel)),
-                DEVICE_DT_GET(DT_ALIAS(zephyr_imu0_gyro)));
+static IMU imu0(
+    DEVICE_DT_GET(DT_ALIAS(zephyr_imu0_accel)), DEVICE_DT_GET(DT_ALIAS(zephyr_imu0_gyro)));
 
 // SPI (raw, generic)
 static Spi spi1(DEVICE_DT_GET(DT_ALIAS(zephyr_spi2)), 1);
@@ -41,18 +40,17 @@ static Adc adc0(DEVICE_DT_GET(DT_ALIAS(zephyr_adc1)), 0);
 static Adc adc1(DEVICE_DT_GET(DT_ALIAS(zephyr_adc2)), 1);
 
 // Quadrature encoders (1000Hz ISR-driven)
-static Qdec qdec0(DEVICE_DT_GET(DT_NODELABEL(qdec0)), 0);
-static Qdec qdec1(DEVICE_DT_GET(DT_NODELABEL(qdec1)), 1);
+static Qdec qdec0(DEVICE_DT_GET(DT_ALIAS(zephyr_qdec0)), 0);
+static Qdec qdec1(DEVICE_DT_GET(DT_ALIAS(zephyr_qdec1)), 1);
 
 // Motors (PID velocity control, 1000Hz ISR-driven)
 static constexpr Motor::Config MOTOR_CFG = {
-    .pwm_period_ns = 50000,     // 20kHz
-    .output_min = -1.0f,
-    .output_max = 1.0f,
-    .vel_min = -100.0f,         // -100 rad/s
-    .vel_max = 100.0f,          // +100 rad/s
+    .pwm_period_ns = 50000, // 20kHz
+    .output_min    = -1.0f,
+    .output_max    = 1.0f,
+    .vel_min       = -100.0f, // -100 rad/s
+    .vel_max       = 100.0f,  // +100 rad/s
 };
-
 static Motor motor0(DEVICE_DT_GET(DT_ALIAS(zephyr_pwm_motor)), 0, qdec0, MOTOR_CFG);
 static Motor motor1(DEVICE_DT_GET(DT_ALIAS(zephyr_pwm_motor)), 1, qdec1, MOTOR_CFG);
 
@@ -62,12 +60,8 @@ static BulkDevice bulk_dev;
 // Status LED
 static StatusLed status_led;
 
-// Watchdog
-static const struct device *wdt_dev = DEVICE_DT_GET(DT_NODELABEL(iwdg));
-
 /// Check if any uplink ring buffer has data that isn't being drained.
-static bool any_ringbuf_full()
-{
+static bool any_ringbuf_full() {
     static constexpr size_t THRESHOLD = 400;
 
     return can0.uplink_writer().readable() > THRESHOLD
@@ -81,15 +75,9 @@ static bool any_ringbuf_full()
         || qdec1.uplink_writer().readable() > THRESHOLD;
 }
 
-int main(void)
-{
+int main(void) {
     // LED 蓝色 — 初始化中
     status_led.init();
-
-    // Watchdog
-    if (device_is_ready(wdt_dev)) {
-        wdt_setup(wdt_dev, WDT_OPT_PAUSE_HALTED_BY_DBG);
-    }
 
     LOG.info("NUEDC slave starting");
 
@@ -111,14 +99,14 @@ int main(void)
     motor1.init();
 
     // Init USB — register all peripherals
-    Can *cans[] = {&can0};
-    Uart *uarts[] = {&uart0, &uart1};
-    Spi *spis[] = {&spi1};
-    I2c *i2cs[] = {&i2c0, &i2c1};
-    IMU *imus[] = {&imu0};
-    Adc *adcs[] = {&adc0, &adc1};
-    Qdec *qdecs[] = {&qdec0, &qdec1};
-    Motor *motors[] = {&motor0, &motor1};
+    Can* cans[]     = { &can0 };
+    Uart* uarts[]   = { &uart0, &uart1 };
+    Spi* spis[]     = { &spi1 };
+    I2c* i2cs[]     = { &i2c0, &i2c1 };
+    IMU* imus[]     = { &imu0 };
+    Adc* adcs[]     = { &adc0, &adc1 };
+    Qdec* qdecs[]   = { &qdec0, &qdec1 };
+    Motor* motors[] = { &motor0, &motor1 };
 
     bulk_dev.set_cans(cans);
     bulk_dev.set_uarts(uarts);
@@ -135,10 +123,9 @@ int main(void)
     LOG.info("All peripherals initialized");
 
     while (true) {
-        // Poll sensors
-        imu0.poll();
-        adc0.poll();
-        adc1.poll();
+        // IMU is interrupt-driven, no polling needed
+        // adc0.poll();
+        // adc1.poll();
 
         // Drain uplink → USB
         bulk_dev.try_transmit();
@@ -150,9 +137,6 @@ int main(void)
 
         // LED 状态更新
         status_led.report_ringbuf_status(any_ringbuf_full());
-
-        // Feed watchdog
-        wdt_feed(wdt_dev, 0);
     }
 
     return 0;

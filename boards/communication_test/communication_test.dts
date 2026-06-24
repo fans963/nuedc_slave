@@ -1,0 +1,247 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/dts-v1/;
+#include <st/f4/stm32f407Xe.dtsi>
+#include <st/f4/stm32f407v(e-g)tx-pinctrl.dtsi>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/led/led.h>
+
+/ {
+	model = "Communication Test Board";
+	compatible = "communication-test";
+
+	chosen {
+		zephyr,console = &usart1;
+		zephyr,shell-uart = &usart1;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,dtcm = &ccm0;
+		zephyr,led-strip = &ws2812;
+	};
+
+	gpio_keys {
+		compatible = "gpio-keys";
+
+		user_button: button {
+			label = "User";
+			gpios = <&gpioa 0 GPIO_ACTIVE_HIGH>;
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	aliases {
+		sw0 = &user_button;
+		zephyr-usbbus = &usbotg_fs;
+		zephyr-watchdog = &iwdg;
+		zephyr-spi1 = &spi1;
+		zephyr-spi2 = &spi2;
+		zephyr-i2c1 = &i2c1;
+		zephyr-i2c2 = &i2c2;
+		zephyr-uart1 = &usart1;
+		zephyr-uart2 = &usart2;
+		zephyr-can1 = &can1;
+		zephyr-adc1 = &adc1;
+		zephyr-adc2 = &adc2;
+		zephyr-imu0-accel = &bmi088_accel;
+		zephyr-imu0-gyro = &bmi088_gyro;
+		zephyr-pwm-motor = &timers1_pwm;
+		zephyr-qdec0 = &qdec0;
+		zephyr-qdec1 = &qdec1;
+	};
+};
+
+/* HSE — 8 MHz crystal (typical for STM32F407 boards) */
+&clk_hse {
+	clock-frequency = <DT_FREQ_M(8)>;
+	status = "okay";
+};
+
+&pll {
+	div-m = <8>;
+	mul-n = <336>;
+	div-p = <2>;
+	div-q = <7>;
+	clocks = <&clk_hse>;
+	status = "okay";
+};
+
+&rcc {
+	clocks = <&pll>;
+	clock-frequency = <DT_FREQ_M(168)>;
+	ahb-prescaler = <1>;
+	apb1-prescaler = <4>;
+	apb2-prescaler = <2>;
+};
+
+/* ── USART ──────────────────────────────────────────────────────────────── */
+
+/* USART1 — console (PA9/PA10) */
+&usart1 {
+	pinctrl-0 = <&usart1_tx_pa9 &usart1_rx_pa10>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+/* USART2 — additional UART (PA2/PA3) */
+&usart2 {
+	pinctrl-0 = <&usart2_tx_pa2 &usart2_rx_pa3>;
+	pinctrl-names = "default";
+	current-speed = <115200>;
+	status = "okay";
+};
+
+/* ── I2C ────────────────────────────────────────────────────────────────── */
+
+/* I2C1 (PB6/PB7) */
+&i2c1 {
+	pinctrl-0 = <&i2c1_scl_pb6 &i2c1_sda_pb7>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* I2C2 (PB10/PB11) */
+&i2c2 {
+	pinctrl-0 = <&i2c2_scl_pb10 &i2c2_sda_pb11>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* ── SPI ────────────────────────────────────────────────────────────────── */
+
+/* SPI1 (PA5/PA6/PA7) — BMI088 accel + gyro */
+&spi1 {
+	pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 4 GPIO_ACTIVE_LOW   /* accel CS */
+		    &gpioa 3 GPIO_ACTIVE_LOW>;  /* gyro CS  */
+	status = "okay";
+
+	bmi088_accel: bmi088-accel@0 {
+		compatible = "bosch,bmi08x-accel";
+		reg = <0>;
+		spi-max-frequency = <DT_FREQ_M(10)>;
+		accel-fs = <16>;
+		accel-hz = "1600";
+		int-gpios = <&gpioc 4 GPIO_ACTIVE_HIGH>;
+	};
+
+	bmi088_gyro: bmi088-gyro@1 {
+		compatible = "bosch,bmi08x-gyro";
+		reg = <1>;
+		spi-max-frequency = <DT_FREQ_M(10)>;
+		gyro-fs = <2000>;
+		gyro-hz = "2000_532";
+		int-gpios = <&gpioc 5 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* SPI2 (PB13/PC2/PC3) */
+&spi2 {
+	pinctrl-0 = <&spi2_sck_pb13 &spi2_miso_pc2 &spi2_mosi_pc3>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* SPI3 — WS2812 LED strip (MOSI only via PB5) */
+&spi3 {
+	pinctrl-0 = <&spi3_sck_pc10 &spi3_mosi_pb5>;
+	pinctrl-names = "default";
+	cs-gpios = <&gpioa 15 GPIO_ACTIVE_LOW>;
+	status = "okay";
+
+	ws2812: ws2812@0 {
+		reg = <0>;
+		compatible = "worldsemi,ws2812-spi";
+		chain-length = <1>;
+		color-mapping = <LED_COLOR_ID_GREEN
+				 LED_COLOR_ID_RED
+				 LED_COLOR_ID_BLUE>;
+		spi-max-frequency = <DT_FREQ_M(4)>;
+		reset-delay = <50>;
+		spi-one-frame = <0x6>;
+		spi-zero-frame = <0x4>;
+		bits-per-symbol = <3>;
+	};
+};
+
+/* ── CAN ────────────────────────────────────────────────────────────────── */
+
+/* CAN1 (PB8/PB9) — moved from PA11/PA12 to avoid conflict with USB FS */
+&can1 {
+	pinctrl-0 = <&can1_rx_pb8 &can1_tx_pb9>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* ── ADC ────────────────────────────────────────────────────────────────── */
+
+/* ADC1 — 4 channels (PA0~PA3) */
+&adc1 {
+	pinctrl-0 = <&adc1_in0_pa0 &adc1_in1_pa1 &adc1_in2_pa2 &adc1_in3_pa3>;
+	pinctrl-names = "default";
+	st,adc-prescaler = <2>;
+	status = "okay";
+};
+
+/* ADC2 — 4 channels (PA4~PA7) */
+&adc2 {
+	pinctrl-0 = <&adc2_in4_pa4 &adc2_in5_pa5 &adc2_in6_pa6 &adc2_in7_pa7>;
+	pinctrl-names = "default";
+	st,adc-prescaler = <2>;
+	status = "okay";
+};
+
+/* ── Timers / PWM / QDEC ───────────────────────────────────────────────── */
+
+/* TIM1 PWM — CH1 (PE9) + CH2 (PE11) */
+&timers1 {
+	status = "okay";
+
+	timers1_pwm: pwm {
+		pinctrl-0 = <&tim1_ch1_pe9 &tim1_ch2_pe11>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};
+
+/* TIM3 — Quadrature decoder (PC6/PC7) */
+&timers3 {
+	status = "okay";
+
+	qdec0: qdec {
+		pinctrl-0 = <&tim3_ch1_pc6 &tim3_ch2_pc7>;
+		pinctrl-names = "default";
+		st,counts-per-revolution = <65535>;
+		st,encoder-mode = <0x3>;
+		status = "okay";
+	};
+};
+
+/* TIM4 — Quadrature decoder (PD12/PD13) */
+&timers4 {
+	status = "okay";
+
+	qdec1: qdec {
+		pinctrl-0 = <&tim4_ch1_pd12 &tim4_ch2_pd13>;
+		pinctrl-names = "default";
+		st,counts-per-revolution = <65535>;
+		st,encoder-mode = <0x3>;
+		status = "okay";
+	};
+};
+
+/* ── USB ────────────────────────────────────────────────────────────────── */
+
+/* USB OTG FS (PA11/PA12) */
+zephyr_udc0: &usbotg_fs {
+	pinctrl-0 = <&usb_otg_fs_dm_pa11 &usb_otg_fs_dp_pa12>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+/* ── Watchdog ───────────────────────────────────────────────────────────── */
+/* IWDG completely disabled */
+/* &iwdg { status = "okay"; }; */

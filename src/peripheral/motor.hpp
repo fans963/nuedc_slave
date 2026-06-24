@@ -1,25 +1,24 @@
 #pragma once
 
-#include <zephyr/drivers/pwm.h>
 #include "peripheral/qdec.hpp"
 #include "util/pid.hpp"
 #include <algorithm>
 #include <cstdint>
+#include <zephyr/drivers/pwm.h>
 
 /// DC motor closed-loop control: PID velocity → PWM duty cycle.
 /// 1000Hz control loop via k_timer ISR.
 class Motor {
 public:
     struct Config {
-        uint32_t pwm_period_ns;     // PWM 周期 (e.g. 50000 = 20kHz)
-        float output_min;           // PID 输出下限 (负值 = 反转)
-        float output_max;           // PID 输出上限
-        float vel_min;              // 目标速度下限 (rad/s)
-        float vel_max;              // 目标速度上限 (rad/s)
+        uint32_t pwm_period_ns; // PWM 周期 (e.g. 50000 = 20kHz)
+        float output_min;       // PID 输出下限 (负值 = 反转)
+        float output_max;       // PID 输出上限
+        float vel_min;          // 目标速度下限 (rad/s)
+        float vel_max;          // 目标速度上限 (rad/s)
     };
 
-    Motor(const struct device *pwm_dev, uint8_t pwm_channel,
-          Qdec &encoder, const Config &cfg);
+    Motor(const struct device* pwm_dev, uint8_t pwm_channel, Qdec& encoder, const Config& cfg);
 
     int init();
 
@@ -42,9 +41,9 @@ public:
     float output() { return pid_.compute(target_, encoder_.velocity()); }
 
 private:
-    const struct device *pwm_dev_;
+    const struct device* pwm_dev_;
     uint8_t pwm_channel_;
-    Qdec &encoder_;
+    Qdec& encoder_;
     Config cfg_;
 
     util::PidF pid_;
@@ -52,7 +51,7 @@ private:
 
     struct k_timer timer_;
 
-    static void timer_callback(struct k_timer *timer);
+    static void timer_callback(struct k_timer* timer);
     void on_timer();
 
     void set_pwm(float duty_ratio);

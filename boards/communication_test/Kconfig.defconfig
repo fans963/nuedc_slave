@@ -1,0 +1,12 @@
+# Communication Test board configuration
+
+# Copyright (c) 2020 Intel Corporation
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_COMMUNICATION_TEST
+
+config SPI_STM32_INTERRUPT
+	default y
+	depends on SPI
+
+endif # BOARD_COMMUNICATION_TEST
